@@ -32,6 +32,11 @@ class Output {
 
 //Modules
 class Sequencer {
+  constructor(sequences, pattern, bpm) {
+    this.sequences=sequences;
+    this.pattern=pattern;
+    this.bpm=bpm;
+  }
   
 }
 
