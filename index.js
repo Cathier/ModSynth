@@ -85,7 +85,7 @@ class Capacitor {
     this.out.out=0;
   }
   update() {
-    var c=this.baseC;
+    var c=this.baseC+1;
     if(this.shiftC)
       c+=this.shiftC.out*this.gainC;
     if(this.In)
@@ -105,6 +105,19 @@ class Diode {
       else
         this.out.out=0;
     }
+  }
+}
+
+class Inverter {
+  constructor(In) {
+    this.In=In;
+    this.out=new Output();
+  }
+  update() {
+    if(this.In)
+      this.out.out=-this.In.out;
+    else
+      this.out.out=0;
   }
 }
 
@@ -194,20 +207,28 @@ class Modules {
 
 //Code here v
 var modules=new Modules();
-var oscillatorA=new Oscillator(258.5, 0, 0);
-var oscillatorB=new Oscillator(4, 0, 0);
-var oscillatorC=new Oscillator(16, oscillatorB.squareOut, 8);
-var capA=new Capacitor(oscillatorA.sineOut, 10, oscillatorB.sineOut, 4);
-var ampA=new Amplifier(capA.out, 0, oscillatorC.sineOut, 2);
-var speaker=new Speaker(ampA.modulatedOut);
+var oscillatorA=new Oscillator(258.5/2, 0, 0);
+var oscillatorB=new Oscillator(1, 0, 0);
+var oscillatorC=new Oscillator(3, oscillatorB.squareOut, 1);
+var capA=new Capacitor(oscillatorA.squareOut, 100, oscillatorC.sawOut, 100);
+var ampA=new Amplifier(capA.out, -10, 0, 0);
+var diodeA=new Diode(ampA.modulatedOut);
+var inverterA=new Inverter(diodeA.out);
+var mixerA=new Mixer(diodeA.out, inverterA.out, 0.5, oscillatorC.sineOut, 0.5);
+var speaker=new Speaker(mixerA.biasedOut);
 
 modules.addModule(oscillatorA);
 modules.addModule(oscillatorB);
 modules.addModule(oscillatorC);
 modules.addModule(capA);
 modules.addModule(ampA);
+modules.addModule(diodeA);
+modules.addModule(inverterA);
+modules.addModule(mixerA);
 modules.addModule(speaker);
+//Code here ^
 
+//Main function
 export function dsp(t) {
   time=t;
   modules.updateAll();
