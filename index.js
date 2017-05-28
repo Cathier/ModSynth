@@ -229,15 +229,21 @@ var modules=new Modules();
 
 //Modules here v
 var sequencerA=new Sequencer(modules, [
-    [1, 3, 4, 0],
-    [2, 3, 2, 1]
+    [0, 3, 12, 12, 12, 12],
+    [14, 14, 14, 15, 14, 15],
+    [14, 10, 7, 7, 7, 7],
+    [7, 7, 0, 0, 3, 5],
+    [7, 7, 7, 7, 7, 7],
+    [2, 2, 2, 2, 2, 2]
   ],
-  [0, 0, 1, 1],
-  180, 43, 440
+  [0, 0, 1, 2, 3, 4, 3, 5],
+  240, 42, 440
 );
 var oscillatorA=new Oscillator(modules, 0, sequencerA.out, 1);
-var capA=new Capacitor(modules, oscillatorA.sineOut, 0, 0, 0);
-var speaker=new Speaker(modules, capA.out);
+var oscillatorB=new Oscillator(modules, 2, 0, 0);
+var capA=new Capacitor(modules, oscillatorB.squareOut, 5000, 0, 0);
+var mixerA=new Mixer(modules, oscillatorA.squareOut, oscillatorA.sineOut, 0.5, capA.out, 0.5);
+var speaker=new Speaker(modules, mixerA.biasedOut);
 //Modules here ^
 
 //Main function
