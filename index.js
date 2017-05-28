@@ -43,6 +43,7 @@ class Sequencer {
     this.baseF=baseF;
     this.transpose=transpose;
     this.out=new Output();
+    this.out.out=0;
     this.sequenceSize=sequences[0].length;
   }
   update() {
@@ -53,12 +54,29 @@ class Sequencer {
   }
 }
 
-class DrumSequencer {
-  constructor(module) {
+class Drum {
+  constructor(module, sequences, pattern, bpm, baseF, fade) {
     module.addModule(this);
+    this.sequences=sequences;
+    this.pattern=pattern;
+    this.bpm=bpm;
+    this.baseF=baseF;
+    this.sineOut=new Output();
+    this.squareOut=new Output();
+    this.sequenceSize=sequences[0].length;
+    this.fade=fade;
   }
   update() {
+    var currentNote=Math.floor((time*this.bpm/60)%this.sequenceSize);
+    var currentPattern=Math.floor((time*this.bpm/60/this.sequenceSize)%this.pattern.length);
     
+    if(this.sequences[this.pattern[currentPattern]][currentNote]) {
+      this.sineOut.out=sineWave(time, this.baseF)/(1/this.fade+(time%(1/this.bpm*60)))/this.fade;
+      this.squareOut.out=squareWave(time, this.baseF)/(1/this.fade+(time%(1/this.bpm*60)))/this.fade;
+    } else {
+      this.sineOut.out=0;
+      this.squareOut.out=0;
+    }
   }
 }
 
@@ -75,6 +93,8 @@ class Amplifier {
     this.gainA=gainA;
     this.modulatedOut=new Output();
     this.multipliedOut=new Output();
+    this.modulatedOut.out=0;
+    this.multipliedOut.out=0;
   }
   update() {
     var a=this.baseA;
@@ -86,10 +106,10 @@ class Amplifier {
       a=-1/(a-1);
     if(this.In) {
       if(this.In.out<0) {
-        this.modulatedOut.out=-Math.pow(-this.In.out, a);
+        this.modulatedOut.out=-Math.pow(-this.In.out, 1/a);
       }
       else
-        this.modulatedOut.out=Math.pow(this.In.out, a);
+        this.modulatedOut.out=Math.pow(this.In.out, 1/a);
       this.multipliedOut.out=this.In.out*a;
     } else {
       this.multipliedOut.out=0;
@@ -122,6 +142,7 @@ class Diode {
     module.addModule(this);
     this.In=In;
     this.out=new Output();
+    this.out.out=0;
   }
   update() {
     if(this.In) {
@@ -138,6 +159,7 @@ class Inverter {
     module.addModule(this);
     this.In=In;
     this.out=new Output();
+    this.out.out=0;
   }
   update() {
     if(this.In)
@@ -156,6 +178,9 @@ class Oscillator {
     this.sineOut=new Output();
     this.squareOut=new Output();
     this.sawOut=new Output();
+    this.sineOut.out=0;
+    this.squareOut.out=0;
+    this.sawOut.out=0;
   }
   update() {
     var freq=this.baseF;
@@ -177,6 +202,8 @@ class Mixer {
     this.gainB=gainB;
     this.biasedOut=new Output();
     this.modulatedOut=new Output();
+    this.biasedOut.out=0;
+    this.modulatedOut.out=0;
   }
   update() {
     var InputA;
@@ -237,19 +264,39 @@ var modules=new Modules();
 
 
 //Modules here v
-var sequencerA=new Sequencer(modules, [
-    [0, 3, 5, 7],
-    [12, 10, 8, 7],
-    [5, 5, 7, 7]
-  ],
-  [0, 0, 1, 2],
-  75, 34, 440
-);
-var oscillatorA=new Oscillator(modules, 0, sequencerA.out, 1);
-var oscillatorB=new Oscillator(modules, 7/6, sequencerA.out, 0.5);
-var diodeA=new Diode(modules, oscillatorA.squareOut);
-var mixerA=new Mixer(modules, oscillatorA.squareOut, diodeA.out, 0.5, oscillatorB.squareOut, 0.5);
-var speaker=new Speaker(modules, mixerA.biasedOut);
+var bass=new Drum(modules, [
+    [1, 1, 0, 0, 1, 0, 1, 0]
+    ],
+    [0],
+    320, 30, 10
+  );
+var tom=new Drum(modules, [
+    [1, 0, 1, 0, 0, 1, 0, 0],
+    [1, 1, 0, 1, 0, 1, 0, 1]
+    ],
+    [0, 0, 1, 1],
+    320, 60, 50
+  );
+var tom2=new Drum(modules, [
+    [1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0]
+    ],
+    [0, 0, 1, 1],
+    320, 70, 50
+  );
+var snare=new Drum(modules, [
+    [0, 1, 0, 1, 1, 1, 0, 1]
+    ],
+    [0],
+    320, 140, 500
+  );
+
+var drumMixerA=new Mixer(modules, bass.sineOut, tom.sineOut, 0.5, 0, 0);
+var drumMixerB=new Mixer(modules, drumMixerA.modulatedOut, snare.sineOut, 0.5, 0, 0);
+var drumMixerC=new Mixer(modules, drumMixerB.modulatedOut, tom2.sineOut, 0.5, 0, 0);
+var ampA=new Amplifier(modules, drumMixerB.modulatedOut, 0.75, 0, 0);
+
+var speaker=new Speaker(modules, ampA.modulatedOut);
 //Modules here ^
 
 //Main function
@@ -259,4 +306,6 @@ export function dsp(t) {
   
   return modules.modList[modules.modList.length-1].out.out;
 }
+
+
 
