@@ -22,6 +22,9 @@ function sawWave(t, f) {
   return 2*((t*f)%1)-1;
 }
 
+function noteFreq(n, b) {
+  return b*Math.pow(2, (n-49)/12);
+}
 
 //Helper classes
 class Output {
@@ -32,12 +35,22 @@ class Output {
 
 //Modules
 class Sequencer {
-  constructor(sequences, pattern, bpm) {
+  constructor(module, sequences, pattern, bpm, transpose, baseF) {
+    module.addModule(this);
     this.sequences=sequences;
     this.pattern=pattern;
     this.bpm=bpm;
+    this.baseF=baseF;
+    this.transpose=transpose;
+    this.out=new Output();
+    this.sequenceSize=sequences[0].length;
   }
-  
+  update() {
+    var currentNote=Math.floor((time*this.bpm/60)%this.sequenceSize);
+    var currentPattern=Math.floor((time*this.bpm/60/this.sequenceSize)%this.pattern.length);
+    
+    this.out.out=noteFreq(this.sequences[this.pattern[currentPattern]][currentNote]+this.transpose, this.baseF);
+  }
 }
 
 class Filter {
@@ -45,7 +58,8 @@ class Filter {
 }
 
 class Amplifier {
-  constructor(In, baseA, shiftA, gainA) {
+  constructor(module, In, baseA, shiftA, gainA) {
+    module.addModule(this);
     this.In=In;
     this.baseA=baseA;
     this.shiftA=shiftA;
@@ -76,7 +90,8 @@ class Amplifier {
 }
 
 class Capacitor {
-  constructor(In, baseC, shiftC, gainC) {
+  constructor(module, In, baseC, shiftC, gainC) {
+    module.addModule(this);
     this.In=In;
     this.baseC=baseC;
     this.shiftC=shiftC;
@@ -94,7 +109,8 @@ class Capacitor {
 }
 
 class Diode {
-  constructor(In) {
+  constructor(module, In) {
+    module.addModule(this);
     this.In=In;
     this.out=new Output();
   }
@@ -109,7 +125,8 @@ class Diode {
 }
 
 class Inverter {
-  constructor(In) {
+  constructor(module, In) {
+    module.addModule(this);
     this.In=In;
     this.out=new Output();
   }
@@ -122,7 +139,8 @@ class Inverter {
 }
 
 class Oscillator {
-  constructor(baseF, shiftF, gainF) {
+  constructor(module, baseF, shiftF, gainF) {
+    module.addModule(this);
     this.baseF=baseF;
     this.shiftF=shiftF;
     this.gainF=gainF;
@@ -141,7 +159,8 @@ class Oscillator {
 }
 
 class Mixer {
-  constructor(InA, InB, baseB, shiftB, gainB) {
+  constructor(module, InA, InB, baseB, shiftB, gainB) {
+    module.addModule(this);
     this.InA=InA;
     this.InB=InB;
     this.baseB=baseB;
@@ -178,16 +197,14 @@ class Mixer {
 }
 
 class Speaker {
-  constructor(In) {
+  constructor(module, In) {
+    module.addModule(this);
     this.In=In;
     this.out=new Output();
     this.out.out=0;
   }
   update() {
     this.out.out=this.In.out;
-  }
-  output() {
-    return this.out.out;
   }
 }
 
@@ -205,34 +222,29 @@ class Modules {
   }
 }
 
-//Code here v
+//Module controller
 var modules=new Modules();
-var oscillatorA=new Oscillator(258.5/2, 0, 0);
-var oscillatorB=new Oscillator(1, 0, 0);
-var oscillatorC=new Oscillator(3, oscillatorB.squareOut, 1);
-var capA=new Capacitor(oscillatorA.squareOut, 100, oscillatorC.sawOut, 100);
-var ampA=new Amplifier(capA.out, -10, 0, 0);
-var diodeA=new Diode(ampA.modulatedOut);
-var inverterA=new Inverter(diodeA.out);
-var mixerA=new Mixer(diodeA.out, inverterA.out, 0.5, oscillatorC.sineOut, 0.5);
-var speaker=new Speaker(mixerA.biasedOut);
 
-modules.addModule(oscillatorA);
-modules.addModule(oscillatorB);
-modules.addModule(oscillatorC);
-modules.addModule(capA);
-modules.addModule(ampA);
-modules.addModule(diodeA);
-modules.addModule(inverterA);
-modules.addModule(mixerA);
-modules.addModule(speaker);
-//Code here ^
+
+
+//Modules here v
+var sequencerA=new Sequencer(modules, [
+    [1, 3, 4, 0],
+    [2, 3, 2, 1]
+  ],
+  [0, 0, 1, 1],
+  180, 43, 440
+);
+var oscillatorA=new Oscillator(modules, 0, sequencerA.out, 1);
+var capA=new Capacitor(modules, oscillatorA.sineOut, 0, 0, 0);
+var speaker=new Speaker(modules, capA.out);
+//Modules here ^
 
 //Main function
 export function dsp(t) {
   time=t;
   modules.updateAll();
   
-  return speaker.output();
+  return modules.modList[modules.modList.length-1].out.out;
 }
 
