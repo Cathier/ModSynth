@@ -190,9 +190,9 @@ class Modules {
 //Code here v
 var modules=new Modules();
 var oscillatorA=new Oscillator(258.5, 0, 0);
-var oscillatorB=new Oscillator(2, 0, 0);
-var oscillatorC=new Oscillator(16, oscillatorB.sineOut, 8);
-var capA=new Capacitor(oscillatorA.squareOut, 10, oscillatorB.sineOut, 4);
+var oscillatorB=new Oscillator(4, 0, 0);
+var oscillatorC=new Oscillator(16, oscillatorB.squareOut, 8);
+var capA=new Capacitor(oscillatorA.sineOut, 10, oscillatorB.sineOut, 4);
 var ampA=new Amplifier(capA.out, 0, oscillatorC.sineOut, 2);
 var speaker=new Speaker(ampA.modulatedOut);
 
