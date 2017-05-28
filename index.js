@@ -2,9 +2,11 @@
 /**
  * @name ModSynth
  */
- 
+//Global variables 
 var time;
 
+
+//Global functions
 function sineWave(t, f) {
   return Math.sin(Math.PI*2*t*f);
 }
@@ -20,9 +22,84 @@ function sawWave(t, f) {
   return 2*((t*f)%1)-1;
 }
 
+
+//Helper classes
 class Output {
   constructor() {
     this.out;
+  }
+}
+
+//Modules
+class Sequencer {
+  
+}
+
+class Filter {
+  
+}
+
+class Amplifier {
+  constructor(In, baseA, shiftA, gainA) {
+    this.In=In;
+    this.baseA=baseA;
+    this.shiftA=shiftA;
+    this.gainA=gainA;
+    this.modulatedOut=new Output();
+    this.multipliedOut=new Output();
+  }
+  update() {
+    var a=this.baseA;
+    if(this.shiftA)
+      a+=this.shiftA.out*this.gainA;
+    if(a>=0)
+      a+=1;
+    else
+      a=-1/(a-1);
+    if(this.In) {
+      if(this.In.out<0) {
+        this.modulatedOut.out=-Math.pow(-this.In.out, a);
+      }
+      else
+        this.modulatedOut.out=Math.pow(this.In.out, a);
+      this.multipliedOut.out=this.In.out*a;
+    } else {
+      this.multipliedOut.out=0;
+      this.modulatedOut.out=0;
+    }
+  }
+}
+
+class Capacitor {
+  constructor(In, baseC, shiftC, gainC) {
+    this.In=In;
+    this.baseC=baseC;
+    this.shiftC=shiftC;
+    this.gainC=gainC;
+    this.out=new Output();
+    this.out.out=0;
+  }
+  update() {
+    var c=this.baseC;
+    if(this.shiftC)
+      c+=this.shiftC.out*this.gainC;
+    if(this.In)
+      this.out.out+=(this.In.out-this.out.out)/c;
+  }
+}
+
+class Diode {
+  constructor(In) {
+    this.In=In;
+    this.out=new Output();
+  }
+  update() {
+    if(this.In) {
+      if(this.In.out>=0)
+        this.out.out=this.In.out;
+      else
+        this.out.out=0;
+    }
   }
 }
 
@@ -35,50 +112,97 @@ class Oscillator {
     this.squareOut=new Output();
     this.sawOut=new Output();
   }
-  
   update() {
-    var freq=baseF;
-    if(shiftF)
-    {
-      freq+=shiftF.out*gainF;
-    }
-    sineOut.out=sineWave(time, freq);
-    squareOut.out=squareWave(time, freq);
-    sawOut.out=sawWave(time, freq);
+    var freq=this.baseF;
+    if(this.shiftF)
+      freq+=this.shiftF.out*this.gainF;
+    this.sineOut.out=sineWave(time, freq);
+    this.squareOut.out=squareWave(time, freq);
+    this.sawOut.out=sawWave(time, freq);
   }
-  
 }
 
 class Mixer {
-  
+  constructor(InA, InB, baseB, shiftB, gainB) {
+    this.InA=InA;
+    this.InB=InB;
+    this.baseB=baseB;
+    this.shiftB=shiftB;
+    this.gainB=gainB;
+    this.biasedOut=new Output();
+    this.modulatedOut=new Output();
+  }
+  update() {
+    var InputA;
+    var InputB;
+    if(this.InA)
+      InputA=this.InA.out;
+    else
+      InputA=0;
+    if(this.InB)
+      InputB=this.InB.out;
+    else
+      InputB=0;
+    
+    if(InputA<0&&InputB<0)
+      this.modulatedOut.out=InputA+InputB+InputA*InputB;
+    else
+      this.modulatedOut.out=InputA+InputB-InputA*InputB;
+    
+    var bias;
+    if(this.shiftB)
+      bias=this.baseB+this.gainB*this.shiftB.out;
+    else
+      bias=this.baseB;
+      
+    this.biasedOut.out=InputA*bias+InputB*(1-bias);
+  }
 }
 
 class Speaker {
   constructor(In) {
     this.In=In;
+    this.out=new Output();
+    this.out.out=0;
+  }
+  update() {
+    this.out.out=this.In.out;
+  }
+  output() {
+    return this.out.out;
   }
 }
 
 class Modules {
   constructor() {
-    this.modList=[]
+    this.modList=[];
   }
-  
   updateAll() {
-    modList.forEach(function(a) {
+    this.modList.forEach(function(a) {
       a.update();
     });
   }
-  
   addModule(mod) {
-    modList.push(mod);
+    this.modList.push(mod);
   }
 }
 
+//Code here v
+var modules=new Modules();
+var oscillatorA=new Oscillator(250, 0, 0);
+var oscillatorB=new Oscillator(1, 0, 0);
+var capA=new Capacitor(oscillatorA.squareOut, 10, oscillatorB.sineOut, 1);
+var speaker=new Speaker(capA.out);
+
+modules.addModule(oscillatorA);
+modules.addModule(oscillatorB);
+modules.addModule(capA);
+modules.addModule(speaker);
+
 export function dsp(t) {
   time=t;
+  modules.updateAll();
   
-  
-  return 0;
+  return speaker.output();
 }
 
