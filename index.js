@@ -3,7 +3,7 @@
  * @name ModSynth
  */
 //Global variables 
-var time;
+var time=0;
 
 
 //Global functions
@@ -189,14 +189,18 @@ class Modules {
 
 //Code here v
 var modules=new Modules();
-var oscillatorA=new Oscillator(250, 0, 0);
-var oscillatorB=new Oscillator(1, 0, 0);
-var capA=new Capacitor(oscillatorA.squareOut, 10, oscillatorB.sineOut, 1);
-var speaker=new Speaker(capA.out);
+var oscillatorA=new Oscillator(258.5, 0, 0);
+var oscillatorB=new Oscillator(2, 0, 0);
+var oscillatorC=new Oscillator(16, oscillatorB.sineOut, 8);
+var capA=new Capacitor(oscillatorA.squareOut, 10, oscillatorB.sineOut, 4);
+var ampA=new Amplifier(capA.out, 0, oscillatorC.sineOut, 2);
+var speaker=new Speaker(ampA.modulatedOut);
 
 modules.addModule(oscillatorA);
 modules.addModule(oscillatorB);
+modules.addModule(oscillatorC);
 modules.addModule(capA);
+modules.addModule(ampA);
 modules.addModule(speaker);
 
 export function dsp(t) {
