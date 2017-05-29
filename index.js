@@ -154,6 +154,25 @@ class Diode {
   }
 }
 
+class Transistor {
+  constructor(module, In, base, threshold) {
+    module.addModule(this);
+    this.In=In;
+    this.base=base;
+    this.threshold=threshold;
+    this.out=new Output();
+    this.out.out=0;
+  }
+  update() {
+    if(this.In&&this.base) {
+      if(this.base.out>this.threshold)
+        this.out.out=this.In.out;
+      else
+        this.out.out=0;
+    }
+  }
+}
+
 class Inverter {
   constructor(module, In) {
     module.addModule(this);
@@ -264,38 +283,21 @@ var modules=new Modules();
 
 
 //Modules here v
-var bass=new Drum(modules, [
-    [1, 1, 0, 0, 1, 0, 1, 0]
+var toneA=new Sequencer(modules, [
+    [0, 0, 1, 1, 0, 0, 2, 3]
     ],
     [0],
-    320, 30, 10
+    120, 25, 440
   );
-var tom=new Drum(modules, [
-    [1, 0, 1, 0, 0, 1, 0, 0],
-    [1, 1, 0, 1, 0, 1, 0, 1]
-    ],
-    [0, 0, 1, 1],
-    320, 60, 50
-  );
-var tom2=new Drum(modules, [
-    [1, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 0]
-    ],
-    [0, 0, 1, 1],
-    320, 70, 50
-  );
-var snare=new Drum(modules, [
-    [0, 1, 0, 1, 1, 1, 0, 1]
-    ],
-    [0],
-    320, 140, 500
-  );
-
-var drumMixerA=new Mixer(modules, bass.sineOut, tom.sineOut, 0.5, 0, 0);
-var drumMixerB=new Mixer(modules, drumMixerA.modulatedOut, snare.sineOut, 0.5, 0, 0);
-var drumMixerC=new Mixer(modules, drumMixerB.modulatedOut, tom2.sineOut, 0.5, 0, 0);
-var ampA=new Amplifier(modules, drumMixerB.modulatedOut, 0.75, 0, 0);
-
+var oscA=new Oscillator(modules, 0, toneA.out, 2);
+var oscB=new Oscillator(modules, 0, toneA.out, 6);
+var oscC=new Oscillator(modules, 4, toneA.out, 0.5);
+var oscD=new Oscillator(modules, 4, 0, 0);
+var transA=new Transistor(modules, oscC.sineOut, toneA.out, 111);
+var mixA=new Mixer(modules, oscA.sineOut, oscB.sineOut, 0.5, 0, 0);
+var mixB=new Mixer(modules, mixA.modulatedOut, transA.out, 0.5, 0, 0);
+var capA=new Capacitor(modules, mixB.modulatedOut, 25, oscD.sineOut, 25);
+var ampA=new Amplifier(modules, capA.out, 0, oscD.sawOut, 0.5);
 var speaker=new Speaker(modules, ampA.modulatedOut);
 //Modules here ^
 
